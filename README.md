@@ -1,131 +1,175 @@
-# API REST de Gestión Bibliotecaria con FastAPI y MySQL
+# 📚 Sistema de Gestión de Biblioteca - API REST
 
-## Descripción y Funcionamiento de la API
-La presente API REST constituye el núcleo (backend) de un sistema de gestión bibliotecaria. Está construida con el framework **FastAPI** (Python) y utiliza una base de datos relacional **MySQL** para la persistencia de los datos. 
+Esta API REST constituye el núcleo de backend para un sistema de gestión bibliotecaria desarrollado bajo el ecosistema de **FastAPI** (Python) y respaldado por una base de datos relacional **MySQL** para la persistencia permanente de los registros del catálogo.
 
-El sistema opera bajo una arquitectura cliente-servidor, procesando peticiones HTTP estándar (GET, POST, PUT, DELETE) y comunicándose estrictamente mediante el formato de intercambio de datos **JSON**. Su funcionamiento se divide en dos dominios principales: la gestión del inventario (libros) y el control transaccional de los ejemplares (préstamos y devoluciones), garantizando en todo momento la integridad referencial de la base de datos.
+El sistema opera bajo una arquitectura cliente-servidor estructurada, procesando peticiones HTTP estándar (GET, POST, PUT, DELETE) y comunicándose estrictamente a través del formato de intercambio de datos **JSON**. Su funcionamiento cubre de forma íntegra las operaciones CRUD del catálogo de libros, garantizando en todo momento la integridad referencial y el rendimiento de las consultas.
 
 ---
 
-## Endpoints de la API
+## 🛠️ Arquitectura y Componentes del Sistema
 
-### 1. Rutas Base y Documentación
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/` | Devuelve un mensaje de bienvenida con enlaces HATEOAS. |
-| GET | `/health` | Verifica el estado del servidor (Health check). |
-| GET | `/docs` | Interfaz interactiva de documentación (Swagger UI). |
-| GET | `/redoc` | Documentación estática de la API (ReDoc). |
+El entorno completo está completamente contenedorizado mediante **Docker** y **Docker Compose**, lo que garantiza un despliegue aislado, reproducible y seguro de los servicios a través de una red virtual local interna.
 
-### 2. Gestión del Catálogo (Libros)
+```mermaid
+flowchart LR
+    fastapi["🐍 FastAPI (Puerto 8000)<br/>Servidor Web Uvicorn"]
+    mysql["🗄️ MySQL 8.0 (Puerto 3306)<br/>Esquema: PrestamosBiblioteca"]
+    fastapi -->|Consultas SQL Nativas| mysql
+```
 
-#### Listar todos los libros (`GET /books/`)
-El sistema consulta la base de datos y retorna el listado íntegro de los ejemplares registrados en el catálogo.
-* **Cuerpo de la petición:** *(No requiere)*
-* **Respuesta del servidor (200 OK):**
-  ```json
-  [
-    {
-      "titulo": "El Quijote",
-      "autor": "Miguel de Cervantes",
-      "editorial": "Editorial A",
-      "publicadoEn": 1605,
-      "categoria": "Ficción",
-      "id": 1
-    }
-  ]
-Obtener un libro por ID (GET /books/{id})El sistema recibe el identificador único mediante la URL, ejecuta una consulta filtrada y devuelve los detalles del libro solicitado.Cuerpo de la petición: (No requiere)Respuesta del servidor (200 OK):JSON{
-  "titulo": "1984",
-  "autor": "George Orwell",
-  "editorial": "Editorial C",
-  "publicadoEn": 1949,
-  "categoria": "Ciencia",
-  "id": 3
-}
-Registrar un nuevo libro (POST /books/)El sistema recibe los datos de un nuevo volumen a través del cuerpo de la petición. Tras su validación, se inserta el registro y se retorna el objeto persistido con su ID autogenerado.Cuerpo de la petición (JSON):JSON{
-  "titulo": "El Señor de los Anillos",
-  "autor": "J.R.R. Tolkien",
-  "editorial": "Minotauro",
-  "publicadoEn": 1954,
+La infraestructura está compuesta por dos servicios principales orquestados:
+
+| Servicio | Puerto Interno | Descripción Técnica |
+| :--- | :---: | :--- |
+| **mysql** | `3306` | Base de datos relacional con volumen local asignado para garantizar la persistencia de datos independiente del ciclo de vida del contenedor. |
+| **python** | `8000` | API FastAPI montada sobre un servidor web ASGI Uvicorn con políticas de *Live Reload* activas para desarrollo ágil. |
+
+---
+
+## 🚀 Documentación de Endpoints y Operaciones CRUD
+
+A continuación se detallan las operaciones de persistencia implementadas sobre la tabla física `Libro` de la base de datos relacional. Todas las rutas responden con los códigos de estado HTTP estandarizados por la IETF.
+
+### 1. Rutas de Control de Estado (Health Check)
+* `GET /` : Endpoint raíz que devuelve el mensaje de bienvenida y estado inicial del servidor.
+* `GET /health` : Verifica la conectividad interna y latencia entre el contenedor de la API y el motor MySQL.
+* `GET /docs` : Interfaz gráfica interactiva y autogenerada para pruebas de rendimiento (**Swagger UI**).
+
+### 2. Gestión del Catálogo de Libros
+
+#### 🔹 Listar todos los libros (`GET /books/`)
+Realiza una consulta selectiva general en la base de datos para extraer todos los registros disponibles de la tabla.
+* **Cuerpo de la petición (Request Body):** No requiere.
+* **Respuesta del servidor (`200 OK`):**
+```json
+[
+  {
+    "id": 1,
+    "titulo": "El Quijote",
+    "autor": "Miguel de Cervantes",
+    "editorial": "Castalia",
+    "publicadoEn": 1605,
+    "categoria": "Clásicos"
+  }
+]
+```
+
+#### 🔹 Registrar un nuevo libro (`POST /books/`)
+Inserta una nueva fila en la tabla de datos. El campo identificador `id` es omitido en el cuerpo debido a su propiedad auto-incremental administrada por el motor MySQL.
+* **Cuerpo de la petición (`JSON`):**
+```json
+{
+  "titulo": "Harry Potter y la piedra filosofal",
+  "autor": "J.K. Rowling",
+  "editorial": "Salamandra",
+  "publicadoEn": 1997,
   "categoria": "Fantasía"
 }
-Respuesta del servidor (201 Created):JSON{
-  "titulo": "El Señor de los Anillos",
-  "autor": "J.R.R. Tolkien",
-  "editorial": "Minotauro",
-  "publicadoEn": 1954,
-  "categoria": "Fantasía",
-  "id": 11
+```
+* **Respuesta del servidor (`201 Created`):**
+```json
+{
+  "id": 13,
+  "titulo": "Harry Potter y la piedra filosofal",
+  "autor": "J.K. Rowling",
+  "editorial": "Salamandra",
+  "publicadoEn": 1997,
+  "categoria": "Fantasía"
 }
-Actualizar un registro (PUT /books/{id})El sistema modifica los datos de un libro existente en el catálogo. Requiere el ID en la URL y los nuevos campos en el cuerpo de la petición.Cuerpo de la petición (JSON):JSON{
-  "titulo": "1984 (Edición Revisada)",
-  "autor": "George Orwell",
-  "editorial": "Editorial C",
-  "publicadoEn": 1950,
-  "categoria": "Ciencia"
-}
-Respuesta del servidor (200 OK):JSON{
-  "titulo": "1984 (Edición Revisada)",
-  "autor": "George Orwell",
-  "editorial": "Editorial C",
-  "publicadoEn": 1950,
-  "categoria": "Ciencia",
-  "id": 3
-}
-Eliminar un libro (DELETE /books/{id})El sistema borra un registro del catálogo, verificando previamente que no existan restricciones de integridad referencial (como préstamos activos).Cuerpo de la petición: (No requiere)Respuesta del servidor (204 No Content): (Operación exitosa, no se devuelve cuerpo JSON)3. Gestión de PréstamosRegistrar un préstamo (POST /loans/)El sistema gestiona la salida de un ejemplar físico vinculándolo al ID de un usuario. Se registra una nueva entrada transaccional con la fecha actual del sistema.Cuerpo de la petición (JSON):JSON{
-  "userId": 1,
-  "inventoryNumber": "INV001"
-}
-Respuesta del servidor (200 OK):JSON{
-  "message": "Préstamo creado con éxito"
-}
-Procesar una devolución (POST /loans/return)El sistema recibe los datos de un préstamo en curso y ejecuta la eliminación del registro correspondiente, liberando el ejemplar para su posterior uso.Cuerpo de la petición (JSON):JSON{
-  "userId": 1,
-  "inventoryNumber": "INV001"
-}
-Respuesta del servidor (200 OK):JSON{
-  "message": "Ejemplar devuelto con éxito"
-}
-ArquitecturaFragmento de códigoflowchart LR
+```
 
-fastapi["🐍 FastAPI (8000)<br/>Uvicorn"]
-mysql["🗄️ MySQL 8"]
+#### 🔹 Actualizar datos de un libro (`PUT /books/{book_id}`)
+Modifica los valores de un registro existente localizándolo mediante su clave primaria. Lógica interna corregida y blindada mediante comandos parametrizados SQL: `"UPDATE Libro SET titulo = %s, autor = %s... WHERE id = %s"`.
+* **Cuerpo de la petición (`JSON`):**
+```json
+{
+  "titulo": "Harry Potter y la piedra filosofal",
+  "autor": "J.K. Rowling",
+  "editorial": "España",
+  "publicadoEn": 1997,
+  "categoria": "Fantasía"
+}
+```
+* **Respuesta del servidor (`200 OK`):**
+```json
+{
+  "id": 13,
+  "titulo": "Harry Potter y la piedra filosofal",
+  "autor": "J.K. Rowling",
+  "editorial": "España",
+  "publicadoEn": 1997,
+  "categoria": "Fantasía"
+}
+```
 
-fastapi -->|SQL| mysql
-Dos servicios Docker:ServicioPuertoDescripciónmysql3306Base de datos MySQL 8.0 con persistencia localpython8000API FastAPI + UvicornEstructura del proyectoapi/
-├── main.py              # Punto de entrada FastAPI
-├── database.py          # Pool de conexiones MySQL
-├── models.py            # Modelos de datos (Pydantic)
+#### 🔹 Eliminar un libro (`DELETE /books/{book_id}`)
+Ejecuta una instrucción física de borrado permanente liberando la clave primaria del registro en la tabla. Lógica completada con éxito mediante la sentencia parametrizada: `"DELETE FROM Libro WHERE id = %s"`.
+* **Cuerpo de la petición (Request Body):** No requiere.
+* **Respuesta del servidor (`204 No Content`):** *(Operación de eliminación completada de forma exitosa, cuerpo de respuesta vacío).*
+
+---
+
+## 📁 Estructura del Proyecto
+
+```text
+api/
+├── main.py # Punto de entrada y configuración de la aplicación FastAPI
+├── database.py # Configuración del pool de conexiones y driver de MySQL
+├── models.py # Esquemas y DTOs de validación de estructuras de datos (Pydantic)
 └── routes/
-    ├── base.py          # GET / y GET /health
-    ├── books.py         # Endpoints del catálogo de libros
-    └── loans.py         # Endpoints de gestión de préstamos
+    ├── base.py # Módulos de endpoints base de control (/ y /health)
+    └── books.py # Lógica de negocio CRUD e integración de sentencias SQL
 setup-environment/
-├── docker-compose.yml
-├── .env                 # Variables de entorno configuradas
-├── Dockerfile           # Imagen para la API
-├── requirements.txt     # Dependencias de la API
-data/
-└── mysql-data/          # Volumen local MySQL (persistencia)
-Puesta en marchaRequisitos previosDocker y Docker Compose1. Variables de entornoEl archivo setup-environment/.env incluye la configuración del acceso al motor de base de datos (con la instrucción de acceso sin credenciales para desarrollo local):Fragmento de códigoMYSQL_ALLOW_EMPTY_PASSWORD=true
-MYSQL_DATABASE=PrestamosBiblioteca
-MYSQL_USER=biblioteca
-MYSQL_PASSWORD=biblioteca123
+├── docker-compose.yml # Orquestador formal de servicios y redes Docker
+├── .env # Archivo cifrado/local con variables de entorno y contraseñas
+├── Dockerfile # Instrucciones de construcción de imagen optimizada para Python
+└── requirements.txt # Manifiesto de dependencias aisladas del sistema web
+```
+
+---
+
+## ⚙️ Puesta en Marcha y Despliegue
+
+### 1. Variables de Entorno (`.env`)
+La persistencia y el puente de red se gestionan mediante el archivo `.env` ubicado dentro de `setup-environment/`:
+```env
 MYSQL_HOST=mysql
 MYSQL_PORT=3306
-2. Arrancar los serviciosBashcd setup-environment
-docker-compose up --build -d
-3. Verificar estadoBashdocker-compose ps
-docker-compose logs -f python   # logs de la API
-NOTAEl contenedor python contiene un servidor Uvicorn en modo de desarrollo, por lo que se reiniciará automáticamente al detectar cambios en el código fuente. Esto facilita el desarrollo iterativo sin necesidad de reconstruir la imagen cada vez.Comandos útilesBash# Parar servicios
-docker-compose down --volumes --remove-orphans
+MYSQL_USER=biblioteca
+MYSQL_PASSWORD=biblioteca123
+MYSQL_DATABASE=PrestamosBiblioteca
+```
 
-# Reiniciar solo la API
-docker-compose restart python
+### 2. Inicialización del Entorno con Docker Compose
+Desplázate al directorio del entorno de infraestructura e inicializa los servicios en segundo plano:
+```bash
+cd setup-environment
+docker compose up --build -d
+```
 
-# Entrar al contenedor de la API
-docker exec -it $(docker-compose ps -q python) /bin/sh
+### 3. Comandos de Mantenimiento y Logs
+```bash
+# Reiniciar el contenedor de la API de forma aislada
+docker compose restart python
 
-# Acceder a MySQL
-docker exec -it mysql mysql -u root
-Dependencias principalesAPI (requirements.txt):fastapi — framework webuvicorn — servidor ASGImysql-connector-python — driver MySQLdotenv — carga de variables de entornopydantic — validación de datospytz — manejo de zonas horariasLicenciaEste proyecto está licenciado bajo la Licencia CC BY-NC-ND 4.0.
+# Monitorizar las trazas y logs del servidor web en tiempo real
+docker compose logs -f python
+
+# Detener la infraestructura limpiando volúmenes temporales o huérfanos
+docker compose down --volumes --remove-orphans
+```
+
+---
+
+## 📦 Dependencias Core del Sistema
+
+* **fastapi** — Framework web asíncrono de alto rendimiento para APIs.
+* **uvicorn** — Servidor web industrial ASGI para ejecución en producción.
+* **mysql-connector-python** — Driver nativo de comunicación optimizada con MySQL.
+* **python-dotenv** — Lector y parser automatizado para archivos de configuración de entorno.
+* **pydantic** — Motor de tipado estructurado y validación de esquemas JSON.
+
+---
+
+## 📄 Licencia
+Este proyecto se distribuye bajo los términos de la Licencia **CC BY-NC-ND 4.0**.
